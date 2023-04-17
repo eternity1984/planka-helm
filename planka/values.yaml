@@ -1,0 +1,167 @@
+# Default values for planka.
+
+## Planka configuration
+##
+planka:
+  ## Externally facing base URL
+  url: https://planka.example.local
+  secretKey: ""
+
+## Planka image
+## @param image.registry Planka image registry
+## @param image.repository Planka image repository
+## @param image.tag Planka image tag (immutable tags are recommended)
+## @param image.digest Planka image digest in the way sha256:aa.... Please note this parameter, if set, will override the tag
+## @param image.pullPolicy Planka image pull policy
+## @param image.pullSecrets [array] Planka image pull secrets
+##
+image:
+  registry: ghcr.io
+  repository: plankanban/planka
+  # Overrides the image tag whose default is the chart appVersion.
+  tag: ""
+  digest: ""
+  ## Specify a imagePullPolicy
+  ## Defaults to 'Always' if image tag is 'latest', else set to 'IfNotPresent'
+  ## ref: https://kubernetes.io/docs/user-guide/images/#pre-pulling-images
+  ##
+  pullPolicy: IfNotPresent
+  ## Optionally specify an array of imagePullSecrets.
+  ## Secrets must be manually created in the namespace.
+  ## ref: https://kubernetes.io/docs/tasks/configure-pod-container/pull-image-private-registry/
+  ## e.g:
+  ##
+  # pullSecrets:
+  #   - myRegistryKeySecretName
+  pullSecrets: []
+
+## @param nameOverride String to partially override common.names.fullname
+##
+nameOverride: ""
+## @param fullnameOverride String to fully override common.names.fullname
+##
+fullnameOverride: ""
+
+serviceAccount:
+  # Specifies whether a service account should be created
+  create: true
+  # Annotations to add to the service account
+  annotations: {}
+  # The name of the service account to use.
+  # If not set and create is true, a name is generated using the fullname template
+  name: ""
+
+podAnnotations: {}
+
+podSecurityContext: {}
+  # fsGroup: 2000
+
+securityContext: {}
+  # capabilities:
+  #   drop:
+  #   - ALL
+  # readOnlyRootFilesystem: true
+  # runAsNonRoot: true
+  # runAsUser: 1000
+
+
+## Kubernetes configuration
+## For minikube, set this to NodePort, for ingress ClusterIP, elsewhere use LoadBalancer
+## @param service.type Service type
+## @param service.port Service HTTP port
+## @param service.containerPort HTTP port
+##
+service:
+  type: ClusterIP
+  port: 80
+  containerPort: 1337
+
+
+## Planka persistence configuration
+##
+persistence:
+  ## @param persistence.enabled Enable Planka data persistence using PVC
+  ##
+  enabled: true
+  ## @param persistence.existingClaim Name of an existing PVC to use
+  ##
+  existingClaim: ""
+  ## @param persistence.storageClass PVC Storage Class for Planka data volume
+  ## If defined, storageClassName: <storageClass>
+  ## If set to "-", storageClassName: "", which disables dynamic provisioning
+  ## If undefined (the default) or set to null, no storageClassName spec is
+  ##   set, choosing the default provisioner.  (gp2 on AWS, standard on
+  ##   GKE, AWS & OpenStack)
+  ##
+  storageClass: ""
+  ## @param persistence.accessModes PVC Access Mode for Planka volume
+  ##
+  accessModes:
+    - ReadWriteOnce
+  ## @param persistence.size PVC Storage Request for Planka volume
+  ##
+  size: 8Gi
+  ## @param persistence.annotations Annotations for the PVC
+  ##
+  annotations: {}
+  ## @param persistence.labels Labels for the PVC
+  ##
+  labels: {}
+  ## @param persistence.selector Selector to match an existing Persistent Volume (this value is evaluated as a template)
+  ## selector:
+  ##   matchLabels:
+  ##     app: my-app
+  ##
+  selector: {}
+  ## @param persistence.dataSource Custom PVC data source
+  ##
+  dataSource: {}
+
+
+ingress:
+  enabled: false
+  annotations: {}
+    # kubernetes.io/ingress.class: nginx
+    # kubernetes.io/tls-acme: "true"
+  hosts:
+    - host: planka.example.local
+      paths:
+      - path: /
+        backend:
+          serviceName: planka.example.local
+          servicePort: 80
+  tls: []
+  #  - secretName: planka-example-tls
+  #    hosts:
+  #      - planka.example.local
+
+resources: {}
+  # We usually recommend not to specify default resources and to leave this as a conscious
+  # choice for the user. This also increases chances charts run on environments with little
+  # resources, such as Minikube. If you do want to specify resources, uncomment the following
+  # lines, adjust them as necessary, and remove the curly braces after 'resources:'.
+  # limits:
+  #   cpu: 100m
+  #   memory: 128Mi
+  # requests:
+  #   cpu: 100m
+  #   memory: 128Mi
+
+
+replicaCount: 1
+
+nodeSelector: {}
+
+tolerations: []
+
+affinity: {}
+
+
+## PostgreSQL chart configuration
+## ref: https://github.com/bitnami/charts/blob/main/bitnami/postgresql/values.yaml
+postgresql:
+  auth:
+    ## @param auth.database Name for a custom database to create
+    ##
+    database: planka
+    postgresPassword: planka

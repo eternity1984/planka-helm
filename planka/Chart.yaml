@@ -1,0 +1,12 @@
+name: planka
+appVersion: "1.11.0"
+description: Planka is an open-source and self-hosted project tracking platform.
+license: AGPL-3.0
+
+apiVersion: v2
+type: application
+version: 0.1.0
+dependencies:
+- name: postgresql
+  repository: https://charts.bitnami.com/bitnami
+  version: "12.x.x"

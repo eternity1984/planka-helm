@@ -1,0 +1,17 @@
+{{ include "planka.postgresql.password.empty" . }}
+
+{{- $host := (include "planka.postgresql.fullname" .) -}}
+{{- $dbName := .Values.postgresql.auth.database -}}
+{{- $password := .Values.postgresql.auth.postgresPassword -}}
+
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: {{ include "planka.fullname" . }}
+  namespace: {{ .Release.Namespace | quote }}
+data:
+  NODE_ENV: "production"
+  BASE_URL: {{ .Values.planka.url | quote }}
+  TRUST_PROXY: "0"
+  TZ: "UTC"
+  DATABASE_URL: {{ printf "postgresql://postgres:%s@%s/%s" $password $host $dbName | quote }}

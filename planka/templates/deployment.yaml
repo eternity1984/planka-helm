@@ -1,0 +1,120 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ include "planka.fullname" . }}
+  labels:
+    app.kubernetes.io/component: "planka"
+    {{- include "planka.labels" . | nindent 4 }}
+spec:
+  replicas: {{ .Values.replicaCount | default 1 }}
+  selector:
+    matchLabels:
+      {{- include "planka.selectorLabels" . | nindent 6 }}
+      app.kubernetes.io/component: "planka"
+  template:
+    metadata:
+      {{- with .Values.podAnnotations }}
+      annotations:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      labels:
+        app.kubernetes.io/component: "planka"
+        {{- include "planka.selectorLabels" . | nindent 8 }}
+    spec:
+      {{- with .Values.image.pullSecrets }}
+      imagePullSecrets:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      serviceAccountName: {{ include "planka.serviceAccountName" . }}
+      securityContext:
+        {{- toYaml .Values.podSecurityContext | nindent 8 }}
+      initContainers:
+        - name: wait-for-database
+          image: {{ include "planka.dependency.template" (list . "postgresql" "postgresql.image") }} 
+          env:
+            - name: PGHOST
+              value: {{ include "planka.postgresql.fullname" . }}
+            - name: PGPORT
+              value: {{ include "planka.dependency.template" (list . "postgresql" "postgresql.service.port") | quote }}
+            - name: PGDATABASE
+              value: {{ .Values.postgresql.auth.database }}
+            - name: PGUSER
+              value: "postgres"
+            - name: PGPASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: {{ include "planka.dependency.template" (list . "postgresql" "postgresql.secretName") }}
+                  key: {{ include "planka.dependency.template" (list . "postgresql" "postgresql.userPasswordKey") }}
+          command:
+            - sh
+            - -c 
+            - 'until pg_isready; do echo waiting for database; sleep 2; done;'
+      containers:
+        - name: {{ .Chart.Name }}
+          securityContext:
+            {{- toYaml .Values.securityContext | nindent 12 }}
+          image: {{ include "planka.image" . }}
+          imagePullPolicy: {{ .Values.image.pullPolicy }}
+          ports:
+            - name: http
+              containerPort: {{ .Values.service.containerPort }}
+              protocol: TCP
+          command: ["/bin/bash", "-c"]
+          args:
+            - |
+              for i in $(seq 1 30); do
+                ./start.sh &&
+                s=$? && break || s=$?;
+                echo "Tried $i times. Waiting 5 seconds...";
+                sleep 5;
+              done; (exit $s)
+          envFrom:
+            - configMapRef:
+                name: {{ include "planka.fullname" . }}
+          env:
+            - name: SECRET_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: {{ include "planka.fullname" . }}
+                  key: planka-secretKey
+
+          # livenessProbe:
+          #   httpGet:
+          #     path: /
+          #     port: http
+          # readinessProbe:
+          #   httpGet:
+          #     path: /
+          #     port: http
+          volumeMounts:
+            - mountPath: "/app/public/user-avatars"
+              name: planka-data
+              subPath: "user-avatars"
+            - mountPath: "/app/public/project-background-images"
+              name: planka-data
+              subPath: "project-background-images"
+            - mountPath: "/app/private/attachments"
+              name: planka-data
+              subPath: "attachments"
+          resources:
+            {{- toYaml .Values.resources | nindent 12 }}
+      volumes:
+        - name: planka-data
+          {{- if .Values.persistence.enabled }}
+          persistentVolumeClaim:
+            claimName: {{ (tpl .Values.persistence.existingClaim $) | default (include "planka.fullname" .) }}
+          {{- else }}
+          emptyDir: {}
+          {{- end }}
+      {{- with .Values.nodeSelector }}
+      nodeSelector:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .Values.affinity }}
+      affinity:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .Values.tolerations }}
+      tolerations:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
